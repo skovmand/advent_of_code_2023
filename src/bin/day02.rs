@@ -1,8 +1,26 @@
 //! [`Day 2`]
 //! TBD
 
+use std::collections::HashMap;
+
+use advent_of_code_2023::{print_solution, read_from_stdin};
+
 fn main() {
-    println!("Hello, world!");
+    let input = read_from_stdin();
+
+    print_solution(
+        2,
+        1,
+        "What is the sum of the IDs of those games?",
+        find_sum_of_possible_game_ids(&input).to_string(),
+    );
+
+    print_solution(
+        2,
+        2,
+        "What is the sum of the power of these sets?",
+        find_sum_of_products_of_minimum_cube_count(&input).to_string(),
+    );
 }
 
 // Part 1
@@ -17,11 +35,7 @@ fn find_sum_of_possible_game_ids(input: &str) -> u64 {
 
     games
         .iter()
-        .filter(|game| {
-            game.rounds
-                .iter()
-                .all(|rounds| bag.is_game_possible(rounds))
-        })
+        .filter(|game| game.draws.iter().all(|draw| bag.is_game_possible(draw)))
         .map(|game| game.id)
         .sum()
 }
@@ -33,31 +47,10 @@ fn find_sum_of_products_of_minimum_cube_count(input: &str) -> u64 {
     games
         .iter()
         .map(|game| {
-            let mut max_red = 1;
-            let mut max_green = 1;
-            let mut max_blue = 1;
-
-            for round in game.rounds.iter() {
-                for draw in round.iter() {
-                    match draw {
-                        Cube::Red(amount) => {
-                            if amount > &max_red {
-                                max_red = *amount;
-                            }
-                        }
-                        Cube::Green(amount) => {
-                            if amount > &max_green {
-                                max_green = *amount;
-                            }
-                        }
-                        Cube::Blue(amount) => {
-                            if amount > &max_blue {
-                                max_blue = *amount;
-                            }
-                        }
-                    }
-                }
-            }
+            // Defaulting to 1 because we need the product afterwards
+            let max_red = game.draws.iter().map(|draw| draw.red).max().unwrap_or(1);
+            let max_green = game.draws.iter().map(|draw| draw.green).max().unwrap_or(1);
+            let max_blue = game.draws.iter().map(|draw| draw.blue).max().unwrap_or(1);
 
             max_red * max_green * max_blue
         })
@@ -80,57 +73,58 @@ fn parse_game(line: &str) -> Game {
             .expect("could not parse game id")
     };
 
-    let rounds = {
+    let draws = {
         let draw_string = splits.next().expect("no draw");
-
-        draw_string
-            .split("; ")
-            .map(parse_draws)
-            .collect::<Vec<Vec<Cube>>>()
+        parse_draws(draw_string)
     };
 
-    Game {
-        id: game_id,
-        rounds,
-    }
+    Game { id: game_id, draws }
 }
 
-fn parse_draws(set_as_string: &str) -> Vec<Cube> {
-    set_as_string
-        .split(", ")
-        .map(parse_draw)
-        .collect::<Vec<Cube>>()
+fn parse_draws(draws_as_string: &str) -> Vec<Draw> {
+    draws_as_string
+        .split("; ")
+        .map(parse_single_draw)
+        .map(|draw| Draw {
+            red: *draw.get("red").unwrap_or(&0),
+            green: *draw.get("green").unwrap_or(&0),
+            blue: *draw.get("blue").unwrap_or(&0),
+        })
+        .collect()
 }
 
-fn parse_draw(draw_string: &str) -> Cube {
-    let mut splits = draw_string.split(' ');
+fn parse_single_draw(draw_string: &str) -> HashMap<String, u64> {
+    draw_string.split(", ").map(parse_single_color).collect()
+}
+
+fn parse_single_color(color_string: &str) -> (String, u64) {
+    let mut splits = color_string.split(' ');
 
     let amount = {
         let raw = splits.next().expect("no amount");
         raw.parse::<u64>().expect("can't parse amount")
     };
 
-    let color_string = splits.next().expect("no color");
+    let color = {
+        let color_string = splits.next().expect("no color");
+        assert!(["red", "green", "blue"].contains(&color_string));
+        color_string
+    };
 
-    match color_string {
-        "red" => Cube::Red(amount),
-        "green" => Cube::Green(amount),
-        "blue" => Cube::Blue(amount),
-        _ => panic!("unexpected color string"),
-    }
+    (color.to_string(), amount)
 }
 
 #[derive(Debug)]
 struct Game {
     id: u64,
-    rounds: Vec<Vec<Cube>>,
+    draws: Vec<Draw>,
 }
 
 #[derive(Debug)]
-enum Cube {
-    Red(u64),
-    Green(u64),
-    Blue(u64),
+struct Draw {
+    red: u64,
+    green: u64,
+    blue: u64,
 }
 
 struct Bag {
@@ -140,12 +134,8 @@ struct Bag {
 }
 
 impl Bag {
-    fn is_game_possible(&self, desired_draws: &[Cube]) -> bool {
-        desired_draws.iter().all(|cube| match cube {
-            Cube::Red(amount) => amount <= &self.red,
-            Cube::Green(amount) => amount <= &self.green,
-            Cube::Blue(amount) => amount <= &self.blue,
-        })
+    fn is_game_possible(&self, draw: &Draw) -> bool {
+        draw.red <= self.red && draw.blue <= self.blue && draw.green <= self.green
     }
 }
 
