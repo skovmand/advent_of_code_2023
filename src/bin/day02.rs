@@ -63,6 +63,7 @@ fn find_sum_of_products_of_minimum_cube_count(input: &str) -> u64 {
         })
         .sum()
 }
+
 fn parse_games(input: &str) -> Vec<Game> {
     input.lines().map(parse_game).collect::<Vec<Game>>()
 }
