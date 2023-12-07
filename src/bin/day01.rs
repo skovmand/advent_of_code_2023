@@ -118,7 +118,7 @@ zoneight234
 7pqrstsixteen
 ";
 
-    const PUZZLE_INPUT: &str = include_str!("../../puzzle_input/day01.txt");
+    const PUZZLE_INPUT: &str = include_str!("../../puzzle_inputs/day01.txt");
 
     #[test]
     fn solves_the_first_example() {

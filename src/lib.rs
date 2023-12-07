@@ -1,3 +1,4 @@
+pub mod days;
 mod print_solution;
 mod stdin;
 
